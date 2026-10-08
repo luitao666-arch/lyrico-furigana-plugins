@@ -1,0 +1,5 @@
+{
+  "plugin.name": "日本語歌詞(フリガナ)",
+  "plugin.description": "酷狗歌詞源外掛，只提供日語歌詞：歌詞與翻譯用酷狗，讀音取自網易雲羅馬音，自動產生振假名 Ruby",
+  "error.lyricsCandidate": "歌曲 %1$s 的歌詞候選取得失敗：%2$s"
+}

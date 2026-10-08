@@ -1,0 +1,5 @@
+{
+  "plugin.name": "Japanese Lyrics (Furigana)",
+  "plugin.description": "Kugou lyrics source for Japanese songs only: lyrics and translation from Kugou, readings from NetEase romaji, furigana ruby generated automatically",
+  "error.lyricsCandidate": "Lyrics candidate %1$s failed: %2$s"
+}

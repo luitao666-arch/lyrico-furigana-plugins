@@ -1,0 +1,5 @@
+{
+  "plugin.name": "日本語歌词(フリガナ)",
+  "plugin.description": "酷狗歌词源插件，只提供日语歌词：歌词和翻译用酷狗，读音取自网易云罗马音，自动生成振假名 Ruby",
+  "error.lyricsCandidate": "歌曲 %1$s 的歌词候选获取失败：%2$s"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "com.kugou.source.furigana.neromaji",
+  "name": "@plugin.name",
+  "versionCode": 42,
+  "versionName": "0.5.1",
+  "author": "Replica0110",
+  "description": "@plugin.description",
+  "apiVersion": 5,
+  "includeDirs": [
+    "lib"
+  ],
+  "entry": "source.js",
+  "icon": "icon.png",
+  "capabilities": [
+    "getLyrics"
+  ],
+  "minHostApiVersion": 4,
+  "i18n": {
+    "defaultLocale": "en",
+    "resources": {
+      "en": "locales/en.json",
+      "zh-Hans": "locales/zh-Hans.json",
+      "zh-Hant": "locales/zh-Hant.json"
+    }
+  }
+}

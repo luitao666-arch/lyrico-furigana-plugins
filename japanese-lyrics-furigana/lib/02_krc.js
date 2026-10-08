@@ -1,0 +1,171 @@
+function decryptKrc(base64Content) {
+  const bodyBase64 = Platform.base64.dropBytes(base64Content || "", 4);
+  const decodedBase64 = Platform.bytes.xorBase64(bodyBase64, KRC_KEY);
+  return Platform.compression.inflateBase64ToText(decodedBase64);
+}
+
+function parseLanguageTag(tag) {
+  if (!tag) return [];
+
+  try {
+    const root = JSON.parse(Platform.base64.decodeText(tag));
+    return Array.isArray(root.content) ? root.content : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function lineHasText(line) {
+  const words = Array.isArray(line && line[2]) ? line[2] : [];
+  return words.some(word => String((word && word[2]) || "").trim().length > 0);
+}
+
+function parseKrc(krcText) {
+  const tags = {};
+  const original = [];
+  let languageItems = [];
+
+  String(krcText || "").split(/\r?\n/).forEach(rawLine => {
+    const line = String(rawLine || "").trim();
+    if (!line || line.charAt(0) !== "[") return;
+
+    const tag = line.match(/^\[(\w+):([^\]]*)]$/);
+    if (tag) {
+      tags[tag[1]] = tag[2] || "";
+      if (tag[1] === "language") {
+        languageItems = parseLanguageTag(tag[2]);
+      }
+      return;
+    }
+
+    const lineMatch = line.match(/^\[(\d+),(\d+)](.*)$/);
+    if (!lineMatch) return;
+
+    const lineStart = Number(lineMatch[1] || 0);
+    const lineDuration = Number(lineMatch[2] || 0);
+    const lineEnd = lineStart + lineDuration;
+    const lineContent = lineMatch[3] || "";
+
+    const wordOffsets = [];
+    const wordRe = /<(\d+),(\d+),(\d+)>([^<]*)/g;
+    let wordMatch;
+
+    while ((wordMatch = wordRe.exec(lineContent)) !== null) {
+      const offset = Number(wordMatch[1] || 0);
+      const duration = Number(wordMatch[2] || 0);
+      const text = wordMatch[4] || "";
+
+      wordOffsets.push([offset, duration, text]);
+    }
+
+    const words = [];
+
+    wordOffsets.forEach((item, index) => {
+      const offset = item[0];
+      const duration = Number(item[1] || 0);
+      const text = item[2];
+
+      const wordStart = lineStart + offset;
+      const wordEnd = duration > 0
+        ? wordStart + duration
+        : (index < wordOffsets.length - 1
+          ? lineStart + Number(wordOffsets[index + 1][0] || offset)
+          : lineEnd);
+
+      words.push([wordStart, wordEnd, text]);
+    });
+
+    if (!words.length && lineContent) {
+      words.push([lineStart, lineEnd, lineContent]);
+    }
+
+    original.push([lineStart, lineEnd, words]);
+  });
+
+  let translated = null;
+  let romanization = null;
+  let romanizationWords = null;
+
+  languageItems.forEach(item => {
+    const content = Array.isArray(item.lyricContent) ? item.lyricContent : [];
+    const type = Number(item.type);
+
+    if (type === 0) {
+      const romaList = [];
+      let skippedEmpty = 0;
+
+      original.forEach((line, index) => {
+        if (!lineHasText(line)) {
+          skippedEmpty += 1;
+          return;
+        }
+
+        const contentIndex = index - skippedEmpty;
+
+        if (contentIndex >= 0 && contentIndex < content.length) {
+          const entry = content[contentIndex];
+          if (Array.isArray(entry)) {
+            romanizationWords = romanizationWords || [];
+            romanizationWords[index] = entry.map(x => String(x == null ? "" : x).trim());
+          }
+          const text = Array.isArray(entry)
+            ? entry.map(x => String(x || "").trim()).filter(Boolean).join(" ")
+            : "";
+
+          if (text) {
+            romaList.push([
+              line[0],
+              line[1],
+              text
+            ]);
+          }
+        }
+      });
+
+      romanization = romaList.length ? romaList : null;
+      return;
+    }
+
+    if (type === 1) {
+      const transList = [];
+
+      original.forEach((line, index) => {
+        if (index < content.length) {
+          const lineContentList = content[index];
+          const text = Array.isArray(lineContentList) && lineContentList.length
+            ? String(lineContentList[0] || "")
+            : "";
+
+          if (text) {
+            transList.push([
+              line[0],
+              line[1],
+              text
+            ]);
+          }
+        }
+      });
+
+      translated = transList.length ? transList : null;
+    }
+  });
+
+  const result = {
+    type: "structured",
+    tags: tags,
+    original: original,
+    translated: translated,
+    romanization: romanization
+  };
+
+  if (romanizationWords) {
+    Object.defineProperty(result, "furiganaRomanizationWords", {
+      value: romanizationWords,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    });
+  }
+
+  return result;
+}
