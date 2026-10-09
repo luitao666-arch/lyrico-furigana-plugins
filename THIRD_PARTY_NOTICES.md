@@ -30,9 +30,3 @@
 
 - 官方插件开发包 `plugin-devkit`（Lyrico-Plugins，`package.json` 声明为 Apache-2.0），用于校验和打包。
 - [quickjs-emscripten](https://github.com/justjake/quickjs-emscripten)（MIT），用于 QuickJS 兼容性测试。
-
-## 5. 商标与图标
-
-插件的图标是用 `tools/make-icons.py` 生成的原创图案，没有使用网易云音乐、酷狗音乐的标志。
-
-「网易云音乐」「酷狗音乐」及其标志是各自权利人的商标或作品。本项目为非官方的个人项目，与网易、酷狗无关，也未获其认可。
