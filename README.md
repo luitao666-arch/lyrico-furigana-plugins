@@ -86,5 +86,3 @@ python3 tools/build-kanji-readings.py kanji.json japanese-lyrics-furigana/lib/03
 - 汉字读音表来自 KANJIDIC（© EDRDG），经 [kanji-data](https://github.com/davidluzgouveia/kanji-data) 整理，按 CC BY-SA 4.0 使用，改动说明见文件头。
 
 署名和链接的详细信息见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
-
-## **「网易云音乐」「酷狗音乐」和它们的图标属于各自的权利人。这是个人做的非官方项目，和网易、酷狗、Lyrico 官方都没有关系。**
