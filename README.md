@@ -51,26 +51,6 @@
 - Lyrico 的「中文文本转换」设成繁体转简体时，会把日文汉字也转掉（「僕」→「仆」）。
 - 日文汉字歌词显示问题，Unicode 代码一样的日文汉字和繁体中文汉字会显示成繁体中文汉字。此问题是歌词显示/播放软件方面的问题。
 
-## 目录和打包
-
-```
-japanese-lyrics-furigana/   插件
-docs/            截图
-tools/           生成汉字读音表、图标的脚本
-```
-
-打包用 Lyrico-Plugins 里自带的 devkit（Node 20 以上）：
-
-```bash
-node tools/plugin-devkit/src/cli.js validate <本仓库>/japanese-lyrics-furigana
-node tools/plugin-devkit/src/cli.js pack <本仓库>/japanese-lyrics-furigana --out japanese-lyrics-furigana-0.6.1.zip
-```
-
-汉字读音表要重新生成的话，用 [kanji-data](https://github.com/davidluzgouveia/kanji-data) 的 `kanji.json`：
-
-```bash
-python3 tools/build-kanji-readings.py kanji.json japanese-lyrics-furigana/lib/03_kanji_readings.js
-```
 
 ## 关于这个项目
 
