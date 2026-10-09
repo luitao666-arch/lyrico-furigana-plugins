@@ -4,7 +4,7 @@
 
 只提供歌词源，不包含元数据搜索和封面搜索。只返回日语歌词，中文等其他语言的歌词不会出现在搜索结果里。
 
-基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)。
+歌词源的基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)。
 
 | 目录 | 插件 | ID |
 | --- | --- | --- |
