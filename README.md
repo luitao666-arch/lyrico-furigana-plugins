@@ -8,7 +8,7 @@
 
 | 目录 | 插件 | ID |
 | --- | --- | --- |
-| `japanese-lyrics-furigana/` | 日本語歌词(フリガナ) | `com.kugou.source.furigana.neromaji` |
+| `japanese-lyrics-furigana/` | 日语歌词源插件 | `com.kugou.source.furigana.neromaji` |
 
 需要 Lyrico 插件 API 5。
 
