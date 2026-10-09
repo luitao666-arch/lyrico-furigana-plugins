@@ -144,6 +144,16 @@ var RomajiKana = (function() {
       .replace(/(sh|ch|j)i([aou])/g, "$1$2").replace(/([kgnhbpmr])i(y?)o/g, "$1yo");
   }
 
+  let nativeDu = false;
+
+  function setNativeDu(value) {
+    nativeDu = !!value;
+  }
+
+  function nativeVoicing(kana) {
+    return nativeDu && kana ? kana.replace(/どぅ/g, "づ").replace(/でぃ/g, "ぢ") : kana;
+  }
+
   function tokenize(text) {
     const value = normalize(text);
     const tokens = [];
@@ -163,7 +173,7 @@ var RomajiKana = (function() {
         if (!trimmed.replace(/'/g, "")) continue;
         let kana = convertWord(trimmed);
         if (kana == null && /[lxqc]/.test(trimmed)) kana = convertWord(altSpelling(trimmed));
-        tokens.push({ source: trimmed, kana: kana });
+        tokens.push({ source: trimmed, kana: nativeVoicing(kana) });
       }
     }
     return tokens;
@@ -186,6 +196,7 @@ var RomajiKana = (function() {
     toHiragana: toHiragana,
     tokenize: tokenize,
     convertWord: convertWord,
-    kataToHira: kataToHira
+    kataToHira: kataToHira,
+    setNativeDu: setNativeDu
   };
 })();

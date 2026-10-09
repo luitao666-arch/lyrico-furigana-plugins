@@ -17,11 +17,11 @@ var Furigana = (function() {
     "ゐ": ["ゐ", "い", "うぃ"],
     "ゑ": ["ゑ", "え", "うぇ"],
     "ゔ": ["ゔ", "ぶ"],
-    "ぁ": ["ぁ", "あ"],
-    "ぃ": ["ぃ", "い"],
-    "ぅ": ["ぅ", "う"],
-    "ぇ": ["ぇ", "え"],
-    "ぉ": ["ぉ", "お"]
+    "ぁ": ["ぁ", "あ", ""],
+    "ぃ": ["ぃ", "い", ""],
+    "ぅ": ["ぅ", "う", ""],
+    "ぇ": ["ぇ", "え", ""],
+    "ぉ": ["ぉ", "お", ""]
   };
 
   function kataToHira(text) {
@@ -1011,6 +1011,9 @@ var Furigana = (function() {
     if (!Array.isArray(line) || !Array.isArray(line[2])) return line;
     let words = line[2];
     const lineText = textsOf(words).join("");
+    if (typeof RomajiKana === "object" && RomajiKana && RomajiKana.setNativeDu) {
+      RomajiKana.setNativeDu(!/ドゥ|ディ|デュ|どぅ|でぃ/.test(lineText));
+    }
     if (lineLevel && words.length === 1 && Array.isArray(words[0]) &&
         Number(words[0][0]) === Number(line[0]) && Number(words[0][1]) === Number(line[1])) {
       const sungMs = Math.min(20000, Math.max(8000, lineText.replace(/\s+/g, "").length * 1000));
@@ -1107,6 +1110,10 @@ var Furigana = (function() {
       if (!line) return false;
       const hasDash = /\s[-－–—]\s/.test(value);
       if (hasDash && artistParts(tags.ar).some(function(part) { return line.indexOf(part) >= 0; })) return true;
+      if (hasDash) {
+        const shortTitle = normalizeForCompare(String(tags.ti || "").replace(/[(（\[【].*$/, ""));
+        if (index === 0 || (shortTitle.length >= 2 && line.indexOf(shortTitle) === 0)) return true;
+      }
       if (!title) return false;
       if (hasDash && title.length >= 3 && line.indexOf(title) === 0) return true;
       if (line === title) return true;
