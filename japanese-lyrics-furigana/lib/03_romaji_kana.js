@@ -76,7 +76,16 @@ var RomajiKana = (function() {
       const c = s.charAt(i);
       const next = s.charAt(i + 1);
 
-      if (c === "'") { i++; continue; }
+      if (c === "'") {
+        if (isConsonant(next) && (i === 0 || isVowel(s.charAt(i - 1)))) {
+          let j = i + 1;
+          while (j < s.length && isConsonant(s.charAt(j))) j++;
+          if (j >= s.length) { out += "っ"; break; }
+          if (next !== s.charAt(i + 2)) out += "っ";
+        }
+        i++;
+        continue;
+      }
 
       if (c === "n") {
         if (next === "'") { out += "ん"; i += 2; continue; }
@@ -130,19 +139,31 @@ var RomajiKana = (function() {
       .replace(/[’‘`´]/g, "'");
   }
 
+  function altSpelling(word) {
+    return word.replace(/^wu/, "u").replace(/xi/g, "shi").replace(/qi/g, "chi").replace(/cu/g, "tsu").replace(/l/g, "r")
+      .replace(/(sh|ch|j)i([aou])/g, "$1$2").replace(/([kgnhbpmr])i(y?)o/g, "$1yo");
+  }
+
   function tokenize(text) {
     const value = normalize(text);
     const tokens = [];
     const re = /[a-z']+|[ぁ-ゖァ-ヺー]+/g;
-    let m;
-    while ((m = re.exec(value)) !== null) {
-      const src = m[0];
+    const parts = value.match(re) || [];
+    for (let pi = 0; pi < parts.length; pi++) {
+      let src = parts[pi];
+      const marker = /^'([bcdfghjklmpqrstvwxyz]+)$/.exec(src);
+      if (marker && /^[a-z]+$/.test(parts[pi + 1] || "") && parts[pi + 1].charAt(0) !== marker[1].charAt(0)) {
+        src = "'" + marker[1] + parts[pi + 1];
+        pi++;
+      }
       if (KANA_RE.test(src)) {
         tokens.push({ source: src, kana: kataToHira(src) });
       } else {
-        const trimmed = src.replace(/^'+|'+$/g, "");
-        if (!trimmed) continue;
-        tokens.push({ source: trimmed, kana: convertWord(trimmed) });
+        const trimmed = src.replace(/'+$/, "");
+        if (!trimmed.replace(/'/g, "")) continue;
+        let kana = convertWord(trimmed);
+        if (kana == null && /[lxqc]/.test(trimmed)) kana = convertWord(altSpelling(trimmed));
+        tokens.push({ source: trimmed, kana: kana });
       }
     }
     return tokens;

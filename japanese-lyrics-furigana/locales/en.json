@@ -1,5 +1,7 @@
 {
   "plugin.name": "Japanese Lyrics Source",
   "plugin.description": "Searches Japanese lyrics only and automatically adds furigana to kanji. Lyrico's TTML export includes tts:ruby annotations. Lyrics source only: no metadata or cover search. Only Japanese lyrics are returned; lyrics in Chinese or other languages never appear in search results.",
-  "error.lyricsCandidate": "Lyrics candidate %1$s failed: %2$s"
+  "error.lyricsCandidate": "Lyrics candidate %1$s failed: %2$s",
+  "config.pure_digits.title": "Add furigana to numbers",
+  "config.pure_digits.summary": "When on, plain numbers such as 2020 get furigana. Numbers with a unit such as 7月 or 2日 always do."
 }

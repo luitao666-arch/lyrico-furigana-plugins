@@ -623,6 +623,38 @@ var Furigana = (function() {
   }
 
   // 行级处理
+  let pureDigitRuby = false;
+
+  function isPureDigitToken(token, texts) {
+    if (!token.digit) return false;
+    if (token.end - token.start >= 3) return true;
+    const whole = texts.join("");
+    let base = 0;
+    for (let w = 0; w < token.word; w++) base += String(texts[w] || "").length;
+    let before = base + token.start - 1;
+    let after = base + token.end;
+    while (before >= 0 && /[\s　]/.test(whole.charAt(before))) before--;
+    while (after < whole.length && /[\s　]/.test(whole.charAt(after))) after++;
+    const unit = /[一-鿿々つヶヵ]/;
+    return !((before >= 0 && unit.test(whole.charAt(before))) || (after < whole.length && unit.test(whole.charAt(after))));
+  }
+
+  function plainDakuten(text) {
+    return String(text).replace(/づ/g, "ず").replace(/ぢ/g, "じ");
+  }
+
+  function digitReading(token, texts, reading) {
+    if (!reading) return reading;
+    if (token.digit) return !pureDigitRuby && isPureDigitToken(token, texts) ? "" : reading;
+    const base = String(texts[token.word] || "").slice(token.start, token.end);
+    const list = base.length === 1 ? KANJI_READINGS[base] : null;
+    if (!list || list.indexOf(reading) >= 0) return reading;
+    for (let i = 0; i < list.length; i++) {
+      if (plainDakuten(list[i]) === plainDakuten(reading)) return list[i];
+    }
+    return reading;
+  }
+
   function digitsUnresolved(tokens, aligned) {
     return tokens.some(function(token, index) {
       return token.digit && !token.inline && !(aligned.readings && aligned.readings[index]);
@@ -663,8 +695,12 @@ var Furigana = (function() {
         return;
       }
       const wordTokens = tokens.map(function(token, ti) {
-        return { token: token, reading: token.inline ? "" : (aligned.readings[ti] || "") };
+        return { token: token, reading: token.inline ? "" : digitReading(token, [text], aligned.readings[ti] || "") };
       });
+      if (!wordTokens.some(function(item) { return !!item.reading; })) {
+        out.push([cloneWord(word)]);
+        return;
+      }
       out.push(segmentsToWords(word, segmentsFromAlignment(text, wordTokens)));
     });
 
@@ -745,7 +781,7 @@ var Furigana = (function() {
     const perWord = texts.map(function() { return []; });
     tokens.forEach(function(token, index) {
       if (token.kind !== "kanji") return;
-      perWord[token.word].push({ token: token, reading: token.inline ? "" : (aligned.readings[index] || "") });
+      perWord[token.word].push({ token: token, reading: token.inline ? "" : digitReading(token, texts, aligned.readings[index] || "") });
     });
 
     if (parensIgnored) copyEchoReadings(texts, whole, ranges, tokens, aligned, perWord);
@@ -753,7 +789,10 @@ var Furigana = (function() {
     return words.map(function(word, index) {
       if (!Array.isArray(word) || wordHasRuby(word) || !perWord[index].length) return [cloneWord(word)];
       const hasReading = perWord[index].some(function(item) { return !!item.reading; });
-      if (!hasReading) return null;
+      if (!hasReading) {
+        const onlyPureDigits = perWord[index].every(function(item) { return item.token.inline || (item.token.digit && !pureDigitRuby && isPureDigitToken(item.token, texts)); });
+        return onlyPureDigits ? [cloneWord(word)] : null;
+      }
       return segmentsToWords(word, segmentsFromAlignment(texts[index], perWord[index]));
     });
   }
@@ -801,6 +840,7 @@ var Furigana = (function() {
     const glueList = Object.keys(glueWords).sort(function(a, b) { return b.length - a.length; });
 
     let out = "";
+    let unreadable = 0;
     RomajiKana.tokenize(cleaned).forEach(function(token) {
       for (let k = 0; k < glueList.length; k++) {
         const word = glueList[k];
@@ -811,9 +851,10 @@ var Furigana = (function() {
         }
       }
       if (latin[token.source] && (dropLatin || token.kana == null)) return;
-      if (token.kana == null) return;
+      if (token.kana == null) { unreadable++; return; }
       out += token.kana;
     });
+    if (unreadable > 0 && !/[A-Za-z]/.test(String(lineText || ""))) return null;
     return out;
   }
 
@@ -1084,6 +1125,7 @@ var Furigana = (function() {
 
   function annotateLyricsResult(result, romanizationWords, options) {
     if (!result || result.type !== "structured" || !Array.isArray(result.original)) return result;
+    pureDigitRuby = !!(options && options.pureDigits);
     if (!isProbablyJapanese(compactOriginalText(result.original))) return result;
 
     const romaByStart = {};

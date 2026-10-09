@@ -15,9 +15,10 @@
 
 ## 2. 官方插件 —— Replica0110/Lyrico-Plugins
 
-- 来源：<https://github.com/Replica0110/Lyrico-Plugins>（`netease`、`kugou` 0.4.1）
-- 衍生文件：`japanese-lyrics-furigana/source.js`（Furigana 接入之外的部分）、`lib/01_http_sign.js`、`lib/02_krc.js`（酷狗）、`lib/05_ne_http.js`、`lib/06_ne_lrc.js`（网易云）、`manifest.json`、`locales/*.json`
+- 来源：<https://github.com/Replica0110/Lyrico-Plugins>（`qq` 0.5.0）
+- 衍生文件：`japanese-lyrics-furigana/source.js`（Furigana 接入之外的部分）、`lib/01_qq_http.js`、`lib/02_qrc.js`、`manifest.json`、`locales/*.json`
 - **许可证状态：该仓库未声明许可证**（仓库中没有 LICENSE 文件，GitHub 也未识别到许可证）。在原作者明确授权之前，这些衍生内容的权利归原作者所有。
+- 原 QQ 音乐插件的说明里列出的贡献者：qingyueyin、BambooPanda92。
 - 本项目对这些文件只做最小改动（接入 Furigana、修改插件 ID / 名称 / 版本），并保留 `manifest.json` 中的原作者署名 `Replica0110`。
 - 如原作者要求移除或调整，请通过 Issue 联系，将及时处理。
 

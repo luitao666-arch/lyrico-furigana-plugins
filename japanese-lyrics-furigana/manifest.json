@@ -1,8 +1,8 @@
 {
   "id": "com.lyrics.source.japanese.furigana",
   "name": "@plugin.name",
-  "versionCode": 44,
-  "versionName": "0.5.3",
+  "versionCode": 45,
+  "versionName": "0.6.1",
   "author": "Replica0110",
   "description": "@plugin.description",
   "apiVersion": 5,
@@ -13,6 +13,15 @@
   "icon": "icon.png",
   "capabilities": [
     "getLyrics"
+  ],
+  "configFields": [
+    {
+      "key": "pure_digits",
+      "title": "@config.pure_digits.title",
+      "summary": "@config.pure_digits.summary",
+      "type": "switch",
+      "defaultValue": "false"
+    }
   ],
   "minHostApiVersion": 4,
   "i18n": {

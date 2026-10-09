@@ -4,7 +4,7 @@
 
 只提供歌词源，不包含元数据搜索和封面搜索。只返回日语歌词，中文等其他语言的歌词不会出现在搜索结果里。
 
-基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)（netease、kugou 0.4.1）。
+基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)。
 
 | 目录 | 插件 | ID |
 | --- | --- | --- |
@@ -32,7 +32,7 @@
 
 ## 注音原理
 
-读音只取自平台自带的罗马音，转成平假名后，和原文里的假名对齐，汉字夹在中间的部分就是它的读音。不用词典；读音来自网易云，所以搜索时需要联网请求网易云。
+读音只取自平台自带的罗马音，转成平假名后，和原文里的假名对齐，汉字夹在中间的部分就是它的读音。不用词典。
 连续汉字被拆成单字的时候（比如逐字歌词里的「特」「別」），罗马音不知道该在哪切开，这时用一张汉字读音表帮忙挑切分。表只用来挑，读音本身不是从表里来的。熟字训（「今日」「時計」等）读音分不到每个字，就把这几个字合并成一个词整体注音。
 
 对不上、有歧义的地方可能就不会标注。
@@ -63,7 +63,7 @@ tools/           生成汉字读音表、图标的脚本
 
 ```bash
 node tools/plugin-devkit/src/cli.js validate <本仓库>/japanese-lyrics-furigana
-node tools/plugin-devkit/src/cli.js pack <本仓库>/japanese-lyrics-furigana --out japanese-lyrics-furigana-0.5.3.zip
+node tools/plugin-devkit/src/cli.js pack <本仓库>/japanese-lyrics-furigana --out japanese-lyrics-furigana-0.6.1.zip
 ```
 
 汉字读音表要重新生成的话，用 [kanji-data](https://github.com/davidluzgouveia/kanji-data) 的 `kanji.json`：
@@ -74,7 +74,7 @@ python3 tools/build-kanji-readings.py kanji.json japanese-lyrics-furigana/lib/03
 
 ## 关于这个项目
 
-在 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)（netease、kugou 0.4.1）基础上由 Claude Code 开发，包括对齐算法和打包。
+在 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)基础上由 Claude Code 开发，包括对齐算法和打包。
 
 ## 反馈
 
@@ -82,7 +82,7 @@ python3 tools/build-kanji-readings.py kanji.json japanese-lyrics-furigana/lib/03
 
 ## 致谢
 
-- 插件的基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)（netease、kugou 0.4.1）。
+- 插件的基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)。
 - 汉字读音表来自 KANJIDIC（© EDRDG），经 [kanji-data](https://github.com/davidluzgouveia/kanji-data) 整理，按 CC BY-SA 4.0 使用，改动说明见文件头。
 
 署名和链接的详细信息见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
