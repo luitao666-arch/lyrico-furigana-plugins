@@ -1,8 +1,9 @@
 # Lyrico 日语歌词源插件
 
-给 [Lyrico](https://github.com/Replica0110/Lyrico) 用的歌词源插件，专门搜日语歌词，并自动为汉字加上注音（フリガナ）。Lyrico 导出 TTML 时带 `tts:ruby` 注音。
+给 [Lyrico](https://github.com/Replica0110/Lyrico) 用的歌词源插件，专门搜日语歌词，并自动为汉字加上注音（フリガナ）。Lyrico 导出 TTML 时带 `tts:ruby` 注音。*现已支持批量匹配*
+*如果需要数字也注音的话请在插件设置里打开*
 
-只提供歌词源，不包含元数据搜索和封面搜索。只返回日语歌词，中文等其他语言的歌词不会出现在搜索结果里。
+只提供歌词源，不包含元数据搜索和封面搜索。只返回日语歌词，中文等其他语言的歌词不会出现在搜索结果里。*批量匹配时会跳过*
 
 歌词源的基础代码来自 Replica0110 的 [Lyrico-Plugins](https://github.com/Replica0110/Lyrico-Plugins)。
 
