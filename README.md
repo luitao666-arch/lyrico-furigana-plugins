@@ -8,7 +8,7 @@
 
 | 目录 | 插件 | ID |
 | --- | --- | --- |
-| `japanese-lyrics-furigana/` | 日语歌词源插件 | `com.kugou.source.furigana.neromaji` |
+| `japanese-lyrics-furigana/` | 日语歌词源插件 | `com.lyrics.source.japanese.furigana` |
 
 需要 Lyrico 插件 API 5。
 
@@ -63,7 +63,7 @@ tools/           生成汉字读音表、图标的脚本
 
 ```bash
 node tools/plugin-devkit/src/cli.js validate <本仓库>/japanese-lyrics-furigana
-node tools/plugin-devkit/src/cli.js pack <本仓库>/japanese-lyrics-furigana --out japanese-lyrics-furigana-0.5.2.zip
+node tools/plugin-devkit/src/cli.js pack <本仓库>/japanese-lyrics-furigana --out japanese-lyrics-furigana-0.5.3.zip
 ```
 
 汉字读音表要重新生成的话，用 [kanji-data](https://github.com/davidluzgouveia/kanji-data) 的 `kanji.json`：

@@ -1,8 +1,8 @@
 {
-  "id": "com.kugou.source.furigana.neromaji",
+  "id": "com.lyrics.source.japanese.furigana",
   "name": "@plugin.name",
-  "versionCode": 43,
-  "versionName": "0.5.2",
+  "versionCode": 44,
+  "versionName": "0.5.3",
   "author": "Replica0110",
   "description": "@plugin.description",
   "apiVersion": 5,
