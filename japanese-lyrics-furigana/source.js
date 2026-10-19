@@ -239,6 +239,72 @@ function getLyricsForSong(request, song) {
   return annotated;
 }
 
+// QQ 只有纯文本歌词时，到网易云找同一首歌（标题、歌手一致，时长差 3 秒内）的逐行歌词
+function getNeteaseLyricsFor(request, song, usedIds) {
+  const wanted = Number(song.duration || 0);
+  if (!(wanted > 0)) return null;
+  const match = searchNeteaseSongs([song.title, song.artist].filter(Boolean).join(" "))
+    .filter(function(other) {
+      return !usedIds[other.id] && titleMatches(other, song.title) && artistMatches(other, song.artist) &&
+        Math.abs(Number(other.duration) - wanted) <= 3000;
+    })
+    .sort(function(a, b) { return Math.abs(a.duration - wanted) - Math.abs(b.duration - wanted); })[0];
+  if (!match) return null;
+
+  const texts = getNeteaseLyricTexts(match.id);
+  const original = neteaseTimedLines(parseNeteaseLrc(texts.lrc));
+  if (!original.length || !isJapaneseLyrics(original.map(lineTextOf).join("\n"))) return null;
+  usedIds[match.id] = true;
+  Platform.log.debug("QQ", "NetEase fallback " + match.id + " for " + String(song.id || ""));
+
+  const asLines = function(text) {
+    return parseNeteaseLrc(text).map(function(line) { return [line[0], line[0], [[line[0], line[0], line[1]]]]; });
+  };
+  const result = {
+    type: "structured",
+    tags: { ti: song.title || "", ar: song.artist || "", al: song.album || "" },
+    original: original,
+    translated: lyricsMerge(original, asLines(texts.trans)),
+    romanization: null,
+    language: "ja"
+  };
+  // 网易云罗马音是用户上传的，错误较多（「貴方」写成 ta ka ho u），先不注音，
+  // 等 shareRomaji 用 QQ 的罗马音补过之后，剩下的行再用它（见 settleLineTiming）
+  Object.defineProperty(result, "lineTimed", { value: true, enumerable: false, writable: true, configurable: true });
+  Object.defineProperty(result, "neteaseRomaji", { value: lyricsMerge(original, asLines(texts.roma)) || [], enumerable: false, writable: true, configurable: true });
+  return result;
+}
+
+// 逐行歌词注音时被切成几段，各段若按字数分时间，播放器会照着编出来的时间逐字高亮（卡在某段上）。
+// 这里让每段都用整行的时间，并标成逐行歌词。
+function settleLineTiming(request, lyrics) {
+  if (!lyrics || !lyrics.lineTimed) return;
+  const pending = {};
+  lyrics.original.forEach(function(line) { if (!hasRubyLine(line)) pending[String(line[0])] = true; });
+  const romaji = lyrics.neteaseRomaji.filter(function(line) { return line[2] && pending[String(line[0])]; });
+  if (romaji.length && typeof Furigana === "object" && Furigana && Furigana.annotateLyricsResult) {
+    try {
+      const probe = {};
+      Object.keys(lyrics).forEach(function(key) { probe[key] = lyrics[key]; });
+      probe.romanization = romaji;
+      lyrics.original = Furigana.annotateLyricsResult(probe, null, furiganaOptions(request)).original;
+    } catch (e) {
+      Platform.log.warn("Furigana", String(e && e.message ? e.message : e));
+    }
+  }
+  lyrics.romanization = null;
+  lyrics.original = lyrics.original.map(function(line) {
+    const words = (Array.isArray(line[2]) ? line[2] : []).map(function(word) {
+      const next = word.slice();
+      next[0] = line[0];
+      next[1] = line[1];
+      return next;
+    });
+    return [line[0], line[1], words];
+  });
+  lyrics.timing = "Line";
+}
+
 function furiganaOptions(request) {
   return { pureDigits: isEnabled((request.config || {}).pure_digits) };
 }
@@ -357,6 +423,7 @@ function shareRomaji(request, results) {
 const MAX_CANDIDATES = 12;
 const NOT_JAPANESE = { notJapanese: true };
 const BATCH_FETCH = 3;
+const NETEASE_FALLBACK_TRIES = 2;
 const BATCH_TIME_BUDGET_MS = 7000;
 const TIME_BUDGET_MS = 9000;
 
@@ -539,6 +606,8 @@ function getLyrics(request) {
 
   const budget = batch ? BATCH_TIME_BUDGET_MS : TIME_BUDGET_MS;
   const skippedWorks = {};
+  const neteaseIds = {};
+  let neteaseTries = 0;
   const candidates = [];
   const origins = [];
   for (let i = 0; i < songs.length; i++) {
@@ -547,7 +616,15 @@ function getLyrics(request) {
     const work = baseTitle(song.title) + "|" + normalizeLine(song.artist).key;
     if (skippedWorks[work]) continue;
     try {
-      const lyrics = getLyricsForSong(request, song);
+      let lyrics = getLyricsForSong(request, song);
+      if (lyrics === null && neteaseTries < NETEASE_FALLBACK_TRIES) {
+        neteaseTries++;
+        try {
+          lyrics = getNeteaseLyricsFor(request, song, neteaseIds);
+        } catch (e) {
+          Platform.log.warn("QQ", "NetEase fallback failed: " + String(e && e.message ? e.message : e));
+        }
+      }
       if (lyrics === NOT_JAPANESE) {
         if (batch) break;
         skippedWorks[work] = true;
@@ -571,7 +648,10 @@ function getLyrics(request) {
     }
   }
   shareRomaji(request, candidates);
-  if (!batch) return candidates;
+  if (!batch) {
+    candidates.forEach(function(lyrics) { settleLineTiming(request, lyrics); });
+    return candidates;
+  }
 
   if (candidates.length && hasUnannotatedKanji(candidates[0])) {
     const wanted = Number(requestedSong.duration || 0);
@@ -590,6 +670,7 @@ function getLyrics(request) {
     }
     if (pool.length > candidates.length) shareRomaji(request, pool);
   }
+  candidates.forEach(function(lyrics) { settleLineTiming(request, lyrics); });
 
   const confident = [];
   candidates.forEach(function(lyrics, index) {
