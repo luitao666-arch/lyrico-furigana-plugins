@@ -277,8 +277,9 @@ function getNeteaseLyricsFor(request, song, usedIds) {
 }
 
 // 用网易云罗马音给还没注音的行注音。
-// 逐行歌词注音时被切成几段，各段若按字数分时间，播放器会照着编出来的时间逐字高亮（卡在某段上），
-// 所以逐行歌词的每段都用整行的时间，并标成逐行歌词。
+// 逐行歌词注音时被切成几段。播放器（如 RawS Music）只要行里有注音就按逐字涂色，不看 itunes:timing，
+// 各段按字数分时间会卡在某段上，用整行时间又会整行慢慢一起涂。所以每段只给 1 毫秒，
+// 行一开始就整行亮起，看起来和逐行歌词一样；时长不能为 0，否则会被当成无效时间合并掉。
 function finishNeteaseLyrics(request, lyrics) {
   if (!lyrics || !lyrics.neteaseRomaji) return;
   const pending = {};
@@ -300,10 +301,10 @@ function finishNeteaseLyrics(request, lyrics) {
     return;
   }
   lyrics.original = lyrics.original.map(function(line) {
-    const words = (Array.isArray(line[2]) ? line[2] : []).map(function(word) {
+    const words = (Array.isArray(line[2]) ? line[2] : []).map(function(word, index) {
       const next = word.slice();
-      next[0] = line[0];
-      next[1] = line[1];
+      next[0] = Math.min(line[0] + index, line[1]);
+      next[1] = Math.min(line[0] + index + 1, line[1]);
       return next;
     });
     return [line[0], line[1], words];
