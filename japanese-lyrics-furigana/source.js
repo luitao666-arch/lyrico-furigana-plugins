@@ -239,6 +239,93 @@ function getLyricsForSong(request, song) {
   return annotated;
 }
 
+// QM 只有纯文本歌词时，到 NCM 找同一首歌（标题、歌手一致，时长差 3 秒内）的歌词：有逐字用逐字，没有用逐行
+function getNeteaseLyricsFor(request, song, usedIds) {
+  const wanted = Number(song.duration || 0);
+  if (!(wanted > 0)) return null;
+  const match = searchNeteaseSongs([song.title, song.artist].filter(Boolean).join(" "))
+    .filter(function(other) {
+      return !usedIds[other.id] && titleMatches(other, song.title) && artistMatches(other, song.artist) &&
+        Math.abs(Number(other.duration) - wanted) <= 3000;
+    })
+    .sort(function(a, b) { return Math.abs(a.duration - wanted) - Math.abs(b.duration - wanted); })[0];
+  if (!match) return null;
+
+  const texts = getNeteaseLyricTexts(match.id);
+  const wordLines = parseNeteaseYrc(texts.yrc);
+  const original = wordLines.length ? wordLines : neteaseTimedLines(parseNeteaseLrc(texts.lrc));
+  if (!original.length || !isJapaneseLyrics(original.map(lineTextOf).join("\n"))) return null;
+  usedIds[match.id] = true;
+  Platform.log.debug("QQ", "NCM fallback " + match.id + " for " + String(song.id || ""));
+
+  const asLines = function(text) {
+    return parseNeteaseLrc(text).map(function(line) { return [line[0], line[0], [[line[0], line[0], line[1]]]]; });
+  };
+  const result = {
+    type: "structured",
+    tags: { ti: song.title || "", ar: song.artist || "", al: song.album || "" },
+    original: original,
+    translated: lyricsMerge(original, asLines(texts.trans)),
+    romanization: null,
+    language: "ja"
+  };
+  // NCM 罗马音是用户上传的，错误较多（「貴方」写成 ta ka ho u），先不注音，
+  // 等 shareRomaji 用 QM 的罗马音补过之后，剩下的行再用它（见 finishNeteaseLyrics）
+  Object.defineProperty(result, "lineTimed", { value: !wordLines.length, enumerable: false, writable: true, configurable: true });
+  Object.defineProperty(result, "neteaseRomaji", { value: lyricsMerge(original, asLines(texts.roma)) || [], enumerable: false, writable: true, configurable: true });
+  return result;
+}
+
+// 逐行歌词按 QM 处理署名行的方式拆成逐字：一个字一段，注音的词一段（按读音长度占时），
+// 时间在行内依次排开。空白不单独成段（高亮会停在看不见的空格上）：并到前一个字；
+// 行首或注音词后面的空白多是 NCM 混进来的，直接去掉，不放进注音底字。
+function spreadLineTiming(line) {
+  const units = [];
+  (Array.isArray(line[2]) ? line[2] : []).forEach(function(word) {
+    if (Array.isArray(word[3]) && word[3].length) {
+      const reading = word[3].map(function(ruby) { return String(ruby[2] || ""); }).join("");
+      units.push({ word: [0, 0, String(word[2] || "").trim()].concat(word.slice(3)), weight: Math.max(1, reading.length), ruby: true });
+      return;
+    }
+    Array.from(String(word[2] || "")).forEach(function(ch) {
+      const last = units[units.length - 1];
+      if (!/\s/.test(ch)) units.push({ word: [0, 0, ch], weight: 1 });
+      else if (last && !last.ruby) last.word[2] += ch;
+    });
+  });
+  const total = units.reduce(function(sum, unit) { return sum + unit.weight; }, 0);
+  const span = Math.max(units.length, Number(line[1]) - Number(line[0]));
+  let done = 0;
+  const words = units.map(function(unit) {
+    unit.word[0] = Number(line[0]) + Math.round(span * done / total);
+    done += unit.weight;
+    unit.word[1] = Number(line[0]) + Math.round(span * done / total);
+    return unit.word;
+  });
+  return [line[0], line[1], words];
+}
+
+// 用 NCM 罗马音给还没注音的行注音；逐行歌词再用 spreadLineTiming 排成逐字时间
+function finishNeteaseLyrics(request, lyrics) {
+  if (!lyrics || !lyrics.neteaseRomaji) return;
+  const pending = {};
+  lyrics.original.forEach(function(line) { if (!hasRubyLine(line)) pending[String(line[0])] = true; });
+  const romaji = lyrics.neteaseRomaji.filter(function(line) { return line[2] && pending[String(line[0])]; });
+  if (romaji.length && typeof Furigana === "object" && Furigana && Furigana.annotateLyricsResult) {
+    try {
+      const probe = {};
+      Object.keys(lyrics).forEach(function(key) { probe[key] = lyrics[key]; });
+      probe.romanization = romaji;
+      lyrics.original = Furigana.annotateLyricsResult(probe, null, furiganaOptions(request)).original;
+    } catch (e) {
+      Platform.log.warn("Furigana", String(e && e.message ? e.message : e));
+    }
+  }
+  lyrics.romanization = null;
+  if (lyrics.lineTimed) lyrics.original = lyrics.original.map(spreadLineTiming);
+  lyrics.timing = "Word";
+}
+
 function furiganaOptions(request) {
   return { pureDigits: isEnabled((request.config || {}).pure_digits) };
 }
@@ -357,6 +444,7 @@ function shareRomaji(request, results) {
 const MAX_CANDIDATES = 12;
 const NOT_JAPANESE = { notJapanese: true };
 const BATCH_FETCH = 3;
+const NETEASE_FALLBACK_TRIES = 2;
 const BATCH_TIME_BUDGET_MS = 7000;
 const TIME_BUDGET_MS = 9000;
 
@@ -539,6 +627,8 @@ function getLyrics(request) {
 
   const budget = batch ? BATCH_TIME_BUDGET_MS : TIME_BUDGET_MS;
   const skippedWorks = {};
+  const neteaseIds = {};
+  let neteaseTries = 0;
   const candidates = [];
   const origins = [];
   for (let i = 0; i < songs.length; i++) {
@@ -547,7 +637,15 @@ function getLyrics(request) {
     const work = baseTitle(song.title) + "|" + normalizeLine(song.artist).key;
     if (skippedWorks[work]) continue;
     try {
-      const lyrics = getLyricsForSong(request, song);
+      let lyrics = getLyricsForSong(request, song);
+      if (lyrics === null && neteaseTries < NETEASE_FALLBACK_TRIES) {
+        neteaseTries++;
+        try {
+          lyrics = getNeteaseLyricsFor(request, song, neteaseIds);
+        } catch (e) {
+          Platform.log.warn("QQ", "NCM fallback failed: " + String(e && e.message ? e.message : e));
+        }
+      }
       if (lyrics === NOT_JAPANESE) {
         if (batch) break;
         skippedWorks[work] = true;
@@ -571,7 +669,10 @@ function getLyrics(request) {
     }
   }
   shareRomaji(request, candidates);
-  if (!batch) return candidates;
+  if (!batch) {
+    candidates.forEach(function(lyrics) { finishNeteaseLyrics(request, lyrics); });
+    return candidates;
+  }
 
   if (candidates.length && hasUnannotatedKanji(candidates[0])) {
     const wanted = Number(requestedSong.duration || 0);
@@ -590,6 +691,7 @@ function getLyrics(request) {
     }
     if (pool.length > candidates.length) shareRomaji(request, pool);
   }
+  candidates.forEach(function(lyrics) { finishNeteaseLyrics(request, lyrics); });
 
   const confident = [];
   candidates.forEach(function(lyrics, index) {
