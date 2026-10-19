@@ -276,10 +276,36 @@ function getNeteaseLyricsFor(request, song, usedIds) {
   return result;
 }
 
-// 用网易云罗马音给还没注音的行注音。
-// 逐行歌词注音时被切成几段。播放器（如 RawS Music）只要行里有注音就按逐字涂色，不看 itunes:timing，
-// 各段按字数分时间会卡在某段上，用整行时间又会整行慢慢一起涂。所以每段只给 1 毫秒，
-// 行一开始就整行亮起，看起来和逐行歌词一样；时长不能为 0，否则会被当成无效时间合并掉。
+// 逐行歌词按 QQ 处理署名行的方式拆成逐字：一个字一段，注音的词一段（按读音长度占时），
+// 时间在行内依次排开。空白不单独成段（高亮会停在看不见的空格上）：并到前一个字；
+// 行首或注音词后面的空白多是网易云混进来的，直接去掉，不放进注音底字。
+function spreadLineTiming(line) {
+  const units = [];
+  (Array.isArray(line[2]) ? line[2] : []).forEach(function(word) {
+    if (Array.isArray(word[3]) && word[3].length) {
+      const reading = word[3].map(function(ruby) { return String(ruby[2] || ""); }).join("");
+      units.push({ word: [0, 0, String(word[2] || "").trim()].concat(word.slice(3)), weight: Math.max(1, reading.length), ruby: true });
+      return;
+    }
+    Array.from(String(word[2] || "")).forEach(function(ch) {
+      const last = units[units.length - 1];
+      if (!/\s/.test(ch)) units.push({ word: [0, 0, ch], weight: 1 });
+      else if (last && !last.ruby) last.word[2] += ch;
+    });
+  });
+  const total = units.reduce(function(sum, unit) { return sum + unit.weight; }, 0);
+  const span = Math.max(units.length, Number(line[1]) - Number(line[0]));
+  let done = 0;
+  const words = units.map(function(unit) {
+    unit.word[0] = Number(line[0]) + Math.round(span * done / total);
+    done += unit.weight;
+    unit.word[1] = Number(line[0]) + Math.round(span * done / total);
+    return unit.word;
+  });
+  return [line[0], line[1], words];
+}
+
+// 用网易云罗马音给还没注音的行注音；逐行歌词再用 spreadLineTiming 排成逐字时间
 function finishNeteaseLyrics(request, lyrics) {
   if (!lyrics || !lyrics.neteaseRomaji) return;
   const pending = {};
@@ -296,20 +322,8 @@ function finishNeteaseLyrics(request, lyrics) {
     }
   }
   lyrics.romanization = null;
-  if (!lyrics.lineTimed) {
-    if (lyrics.original.some(hasRubyLine)) lyrics.timing = "Word";
-    return;
-  }
-  lyrics.original = lyrics.original.map(function(line) {
-    const words = (Array.isArray(line[2]) ? line[2] : []).map(function(word, index) {
-      const next = word.slice();
-      next[0] = Math.min(line[0] + index, line[1]);
-      next[1] = Math.min(line[0] + index + 1, line[1]);
-      return next;
-    });
-    return [line[0], line[1], words];
-  });
-  lyrics.timing = "Line";
+  if (lyrics.lineTimed) lyrics.original = lyrics.original.map(spreadLineTiming);
+  lyrics.timing = "Word";
 }
 
 function furiganaOptions(request) {
