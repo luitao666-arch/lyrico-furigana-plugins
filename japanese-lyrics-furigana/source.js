@@ -239,7 +239,7 @@ function getLyricsForSong(request, song) {
   return annotated;
 }
 
-// QQ 只有纯文本歌词时，到网易云找同一首歌（标题、歌手一致，时长差 3 秒内）的歌词：有逐字用逐字，没有用逐行
+// QM 只有纯文本歌词时，到 NCM 找同一首歌（标题、歌手一致，时长差 3 秒内）的歌词：有逐字用逐字，没有用逐行
 function getNeteaseLyricsFor(request, song, usedIds) {
   const wanted = Number(song.duration || 0);
   if (!(wanted > 0)) return null;
@@ -256,7 +256,7 @@ function getNeteaseLyricsFor(request, song, usedIds) {
   const original = wordLines.length ? wordLines : neteaseTimedLines(parseNeteaseLrc(texts.lrc));
   if (!original.length || !isJapaneseLyrics(original.map(lineTextOf).join("\n"))) return null;
   usedIds[match.id] = true;
-  Platform.log.debug("QQ", "NetEase fallback " + match.id + " for " + String(song.id || ""));
+  Platform.log.debug("QQ", "NCM fallback " + match.id + " for " + String(song.id || ""));
 
   const asLines = function(text) {
     return parseNeteaseLrc(text).map(function(line) { return [line[0], line[0], [[line[0], line[0], line[1]]]]; });
@@ -269,16 +269,16 @@ function getNeteaseLyricsFor(request, song, usedIds) {
     romanization: null,
     language: "ja"
   };
-  // 网易云罗马音是用户上传的，错误较多（「貴方」写成 ta ka ho u），先不注音，
-  // 等 shareRomaji 用 QQ 的罗马音补过之后，剩下的行再用它（见 finishNeteaseLyrics）
+  // NCM 罗马音是用户上传的，错误较多（「貴方」写成 ta ka ho u），先不注音，
+  // 等 shareRomaji 用 QM 的罗马音补过之后，剩下的行再用它（见 finishNeteaseLyrics）
   Object.defineProperty(result, "lineTimed", { value: !wordLines.length, enumerable: false, writable: true, configurable: true });
   Object.defineProperty(result, "neteaseRomaji", { value: lyricsMerge(original, asLines(texts.roma)) || [], enumerable: false, writable: true, configurable: true });
   return result;
 }
 
-// 逐行歌词按 QQ 处理署名行的方式拆成逐字：一个字一段，注音的词一段（按读音长度占时），
+// 逐行歌词按 QM 处理署名行的方式拆成逐字：一个字一段，注音的词一段（按读音长度占时），
 // 时间在行内依次排开。空白不单独成段（高亮会停在看不见的空格上）：并到前一个字；
-// 行首或注音词后面的空白多是网易云混进来的，直接去掉，不放进注音底字。
+// 行首或注音词后面的空白多是 NCM 混进来的，直接去掉，不放进注音底字。
 function spreadLineTiming(line) {
   const units = [];
   (Array.isArray(line[2]) ? line[2] : []).forEach(function(word) {
@@ -305,7 +305,7 @@ function spreadLineTiming(line) {
   return [line[0], line[1], words];
 }
 
-// 用网易云罗马音给还没注音的行注音；逐行歌词再用 spreadLineTiming 排成逐字时间
+// 用 NCM 罗马音给还没注音的行注音；逐行歌词再用 spreadLineTiming 排成逐字时间
 function finishNeteaseLyrics(request, lyrics) {
   if (!lyrics || !lyrics.neteaseRomaji) return;
   const pending = {};
@@ -643,7 +643,7 @@ function getLyrics(request) {
         try {
           lyrics = getNeteaseLyricsFor(request, song, neteaseIds);
         } catch (e) {
-          Platform.log.warn("QQ", "NetEase fallback failed: " + String(e && e.message ? e.message : e));
+          Platform.log.warn("QQ", "NCM fallback failed: " + String(e && e.message ? e.message : e));
         }
       }
       if (lyrics === NOT_JAPANESE) {

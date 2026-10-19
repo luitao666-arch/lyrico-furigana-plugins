@@ -39,7 +39,7 @@ function getNeteaseLyricTexts(id) {
   return { yrc: text("yrc"), lrc: text("lrc"), trans: text("tlyric"), roma: text("romalrc") };
 }
 
-// 网易云的歌词常在日文字之间夹半角空格（「彷徨 う」「貴 方」），会打断读音对齐
+// NCM 的歌词常在日文字之间夹半角空格（「彷徨 う」「貴 方」），会打断读音对齐
 const NE_JA_CHAR = "぀-ヿ一-鿿々";
 const NE_STRAY_SPACE = new RegExp("([" + NE_JA_CHAR + "])[ \\t]+(?=[" + NE_JA_CHAR + "])", "g");
 
@@ -61,7 +61,7 @@ function cleanNeteaseWords(words) {
   }).filter(function(word) { return word[2] !== ""; });
 }
 
-// 解析参考 Replica0110/Lyrico-Plugins 网易云插件的 parseYrc；字里带括号时也能正确切分
+// 解析参考 Replica0110/Lyrico-Plugins NCM 插件的 parseYrc；字里带括号时也能正确切分
 function parseNeteaseYrc(text) {
   const lines = [];
   String(text || "").split(/\r?\n/).forEach(function(raw) {
