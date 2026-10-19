@@ -239,7 +239,7 @@ function getLyricsForSong(request, song) {
   return annotated;
 }
 
-// QQ 只有纯文本歌词时，到网易云找同一首歌（标题、歌手一致，时长差 3 秒内）的逐行歌词
+// QQ 只有纯文本歌词时，到网易云找同一首歌（标题、歌手一致，时长差 3 秒内）的歌词：有逐字用逐字，没有用逐行
 function getNeteaseLyricsFor(request, song, usedIds) {
   const wanted = Number(song.duration || 0);
   if (!(wanted > 0)) return null;
@@ -252,7 +252,8 @@ function getNeteaseLyricsFor(request, song, usedIds) {
   if (!match) return null;
 
   const texts = getNeteaseLyricTexts(match.id);
-  const original = neteaseTimedLines(parseNeteaseLrc(texts.lrc));
+  const wordLines = parseNeteaseYrc(texts.yrc);
+  const original = wordLines.length ? wordLines : neteaseTimedLines(parseNeteaseLrc(texts.lrc));
   if (!original.length || !isJapaneseLyrics(original.map(lineTextOf).join("\n"))) return null;
   usedIds[match.id] = true;
   Platform.log.debug("QQ", "NetEase fallback " + match.id + " for " + String(song.id || ""));
@@ -269,16 +270,17 @@ function getNeteaseLyricsFor(request, song, usedIds) {
     language: "ja"
   };
   // 网易云罗马音是用户上传的，错误较多（「貴方」写成 ta ka ho u），先不注音，
-  // 等 shareRomaji 用 QQ 的罗马音补过之后，剩下的行再用它（见 settleLineTiming）
-  Object.defineProperty(result, "lineTimed", { value: true, enumerable: false, writable: true, configurable: true });
+  // 等 shareRomaji 用 QQ 的罗马音补过之后，剩下的行再用它（见 finishNeteaseLyrics）
+  Object.defineProperty(result, "lineTimed", { value: !wordLines.length, enumerable: false, writable: true, configurable: true });
   Object.defineProperty(result, "neteaseRomaji", { value: lyricsMerge(original, asLines(texts.roma)) || [], enumerable: false, writable: true, configurable: true });
   return result;
 }
 
-// 逐行歌词注音时被切成几段，各段若按字数分时间，播放器会照着编出来的时间逐字高亮（卡在某段上）。
-// 这里让每段都用整行的时间，并标成逐行歌词。
-function settleLineTiming(request, lyrics) {
-  if (!lyrics || !lyrics.lineTimed) return;
+// 用网易云罗马音给还没注音的行注音。
+// 逐行歌词注音时被切成几段，各段若按字数分时间，播放器会照着编出来的时间逐字高亮（卡在某段上），
+// 所以逐行歌词的每段都用整行的时间，并标成逐行歌词。
+function finishNeteaseLyrics(request, lyrics) {
+  if (!lyrics || !lyrics.neteaseRomaji) return;
   const pending = {};
   lyrics.original.forEach(function(line) { if (!hasRubyLine(line)) pending[String(line[0])] = true; });
   const romaji = lyrics.neteaseRomaji.filter(function(line) { return line[2] && pending[String(line[0])]; });
@@ -293,6 +295,10 @@ function settleLineTiming(request, lyrics) {
     }
   }
   lyrics.romanization = null;
+  if (!lyrics.lineTimed) {
+    if (lyrics.original.some(hasRubyLine)) lyrics.timing = "Word";
+    return;
+  }
   lyrics.original = lyrics.original.map(function(line) {
     const words = (Array.isArray(line[2]) ? line[2] : []).map(function(word) {
       const next = word.slice();
@@ -649,7 +655,7 @@ function getLyrics(request) {
   }
   shareRomaji(request, candidates);
   if (!batch) {
-    candidates.forEach(function(lyrics) { settleLineTiming(request, lyrics); });
+    candidates.forEach(function(lyrics) { finishNeteaseLyrics(request, lyrics); });
     return candidates;
   }
 
@@ -670,7 +676,7 @@ function getLyrics(request) {
     }
     if (pool.length > candidates.length) shareRomaji(request, pool);
   }
-  candidates.forEach(function(lyrics) { settleLineTiming(request, lyrics); });
+  candidates.forEach(function(lyrics) { finishNeteaseLyrics(request, lyrics); });
 
   const confident = [];
   candidates.forEach(function(lyrics, index) {
